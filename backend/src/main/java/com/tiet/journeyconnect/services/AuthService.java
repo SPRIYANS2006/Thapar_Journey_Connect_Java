@@ -145,21 +145,44 @@ public class AuthService {
             throw new IllegalArgumentException("Missing Google ID token credential in request body.");
         }
 
-        // Mock / test student handling or decoded token email
         String email = null;
-        String name = "Test Student";
+        String name = "Campus Student";
 
-        // In test & dev environments, allow credential containing email or token
-        if (credential.contains("@")) {
-            email = credential.trim().toLowerCase();
-        } else {
-            // Default demo student if simulated test credential
-            email = "student1@thapar.edu";
-            name = "Aarav Sharma";
+        // 1. Try decoding standard Google JWT token (header.payload.signature)
+        if (credential.contains(".")) {
+            String[] parts = credential.split("\\.");
+            if (parts.length >= 2) {
+                try {
+                    byte[] decodedBytes = Base64.getUrlDecoder().decode(parts[1]);
+                    String payloadJson = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(payloadJson);
+
+                    if (node.has("email") && !node.get("email").asText().isEmpty()) {
+                        email = node.get("email").asText().toLowerCase().trim();
+                    }
+                    if (node.has("name") && !node.get("name").asText().isEmpty()) {
+                        name = node.get("name").asText().trim();
+                    } else if (node.has("given_name")) {
+                        name = node.get("given_name").asText().trim();
+                        if (node.has("family_name") && !node.get("family_name").asText().isEmpty()) {
+                            name += " " + node.get("family_name").asText().trim();
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Fallback to plain string extraction if decoding fails
+                }
+            }
         }
 
-        if (!email.endsWith("@thapar.edu")) {
-            throw new InvalidCampusDomainException(email, "thapar.edu");
+        // 2. If credential was passed directly as an email string (e.g. simulated/test mode)
+        if (email == null) {
+            if (credential.contains("@")) {
+                email = credential.trim().toLowerCase();
+                name = email.split("@")[0];
+            } else {
+                throw new IllegalArgumentException("Could not extract email from Google credential.");
+            }
         }
 
         Optional<UserEntity> userOpt = userRepository.findByEmailIgnoreCase(email);
@@ -176,6 +199,14 @@ public class AuthService {
             user = userRepository.save(user);
         } else {
             user = userOpt.get();
+            // If the user's name is set to a placeholder, update to their real Google name
+            if (name != null && !name.isEmpty() && !name.equals("Campus Student")) {
+                if (user.getName() == null || user.getName().isEmpty() || "Test Student".equals(user.getName()) || "Aarav Sharma".equals(user.getName())) {
+                    user.setName(name);
+                    user.setAvatar(extractInitials(name));
+                    user = userRepository.save(user);
+                }
+            }
         }
 
         if (Boolean.TRUE.equals(user.getDisabled())) {

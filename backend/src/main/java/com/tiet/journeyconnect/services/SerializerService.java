@@ -1,6 +1,8 @@
 package com.tiet.journeyconnect.services;
 
 import com.tiet.journeyconnect.models.entities.*;
+import com.tiet.journeyconnect.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.ZoneOffset;
@@ -15,6 +17,9 @@ import java.util.*;
 public class SerializerService {
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_INSTANT;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public Map<String, Object> serializeUser(UserEntity user) {
         if (user == null) return null;
@@ -59,8 +64,24 @@ public class SerializerService {
         map.put("id", m.getId());
         map.put("_id", m.getId());
         map.put("userId", m.getUserId());
-        map.put("name", m.getName());
-        map.put("avatar", m.getAvatar());
+
+        String memberName = m.getName();
+        String memberAvatar = m.getAvatar();
+        if (m.getUserId() != null && userRepository != null) {
+            Optional<UserEntity> uOpt = userRepository.findById(m.getUserId());
+            if (uOpt.isPresent()) {
+                UserEntity u = uOpt.get();
+                if (u.getName() != null && !u.getName().isEmpty()) {
+                    memberName = u.getName();
+                }
+                if (u.getAvatar() != null && !u.getAvatar().isEmpty()) {
+                    memberAvatar = u.getAvatar();
+                }
+            }
+        }
+
+        map.put("name", memberName);
+        map.put("avatar", memberAvatar);
         map.put("hostel", m.getHostel());
         map.put("reliability", m.getReliability());
         map.put("departureTime", m.getDepartureTime());
