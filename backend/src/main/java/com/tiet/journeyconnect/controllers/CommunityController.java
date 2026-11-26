@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 @RestController
 @RequestMapping("/api/communities")
@@ -116,15 +117,19 @@ public class CommunityController {
     }
 
     @GetMapping("/{id}/slots")
-    public ResponseEntity<List<Map<String, Object>>> getCityCommunitySlots(
+    public ResponseEntity<Map<String, Object>> getCityCommunitySlots(
             @PathVariable("id") String id,
             @RequestParam(name = "destination", required = false) String destination,
             @RequestParam(name = "date", required = false) String date,
             @RequestParam(name = "mode", required = false) String mode,
             @RequestParam(name = "direction", required = false) String direction,
             HttpServletRequest request) {
-        UserEntity user = authService.resolveUser(request, true);
-        return ResponseEntity.ok(communityService.getCityCommunitySlots(id, destination, date, mode, direction, user));
+        UserEntity user = authService.resolveUser(request, false);
+        List<Map<String, Object>> slots = communityService.getCityCommunitySlots(id, destination, date, mode, direction, user);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("success", true);
+        res.put("slots", slots);
+        return ResponseEntity.ok(res);
     }
 
     @PostMapping("/{id}/slots/join")

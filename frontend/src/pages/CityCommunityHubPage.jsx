@@ -27,7 +27,7 @@ export default function CityCommunityHubPage({ community, user, posts = [], onBa
 
   useEffect(() => {
     let current = true;
-    if (tab === 'Board' || (tab === 'Cab' && !enrolled)) return;
+    if (tab === 'Board') return;
     const timer = setTimeout(async () => {
       setLoading(true); setError('');
       try {
@@ -35,8 +35,8 @@ export default function CityCommunityHubPage({ community, user, posts = [], onBa
           ? await api.getCityCommunitySlots(community.id, { date: cabDate, direction })
           : await api.getTravelGroups({ communityId: community.id, type: tab, date: travelDate, search, excludeJoined: true });
         if (!current) return;
-        const list = tab === 'Cab' ? data.slots || [] : Array.isArray(data) ? data : [];
-        setResults(list.filter(item => !item.isJoined && !item.isMember && !item.isPast && (tab !== 'Cab' || (!item.isFull && item.status === 'Open'))));
+        const list = Array.isArray(data) ? data : (data?.slots || []);
+        setResults(list.filter(item => !item.isJoined && !item.isMember && !item.isPast && (tab !== 'Cab' || (!item.isFull && (item.status === 'Open' || !item.status)))));
       } catch (failure) { if (current) { setError(failure.message || 'Unable to load departures.'); setResults([]); } }
       finally { if (current) setLoading(false); }
     }, search ? 200 : 0);
@@ -58,7 +58,18 @@ export default function CityCommunityHubPage({ community, user, posts = [], onBa
     finally { setPending(null); }
   }
 
-  const available = isCab ? results.filter(item => !time || item.time >= time) : results;
+  const available = isCab
+    ? results.filter(item => {
+        if (time && item.time < time) return false;
+        if (search) {
+          const q = search.toLowerCase().trim();
+          const matchesTime = item.time?.toLowerCase().includes(q) || formatTime24to12(item.time)?.toLowerCase().includes(q);
+          const matchesDest = item.destination?.toLowerCase().includes(q) || item.origin?.toLowerCase().includes(q);
+          return matchesTime || matchesDest;
+        }
+        return true;
+      })
+    : results;
   const visible = available.slice(0, limit);
   const ActiveIcon = tabs.find(item => item.id === tab).Icon;
 
@@ -76,15 +87,16 @@ export default function CityCommunityHubPage({ community, user, posts = [], onBa
     </div>
 
     <div role="tabpanel" id="community-panel" aria-label={tabs.find(item => item.id === tab).label}>
-      {tab === 'Board' ? <CommunityBoard community={community} enrolled={enrolled} posts={posts} onAddPost={onAddPost} onLikePost={onLikePost} onAddComment={onAddComment} /> : isCab && !enrolled ? <div className="text-center border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-10 space-y-3"><Car className="mx-auto text-blue-600 w-8 h-8" /><h2 className="font-bold text-lg">Cab pools for your hometown</h2><p className="text-sm text-slate-500">Join this hometown to find cab rides. Train and bus groups are open across communities.</p><button className={tripButton} onClick={() => onJoinCommunity?.(community.id)}>Join {community.name}</button></div> : <section className="space-y-5">
+      {tab === 'Board' ? <CommunityBoard community={community} enrolled={enrolled} posts={posts} onAddPost={onAddPost} onLikePost={onLikePost} onAddComment={onAddComment} /> : <section className="space-y-5">
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-5">
-          <div className="flex justify-between items-start gap-4 flex-wrap"><div><h2 className="text-xl font-bold flex items-center gap-2"><ActiveIcon className="w-5 h-5 text-blue-600" />{isCab ? 'Find a cab pool' : `Find a ${tab.toLowerCase()} group`}</h2><p className="text-sm text-slate-500 mt-1">{isCab ? '15-minute departure slots · up to 4 riders' : 'Meet students on the same service. Book your own ticket separately.'}</p></div>{!isCab && <button className={tripButton} onClick={() => setCreating(true)}><Plus className="w-4 h-4" />Create {tab.toLowerCase()} group</button>}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {isCab ? <label className="text-xs font-semibold space-y-1.5">Route<select className={tripInput} value={direction} onChange={event => { setDirection(event.target.value); setResults([]); setLoading(true); setLimit(6); }}><option value="departing">Thapar → {community.name}</option><option value="returning">{community.name} → Thapar</option></select></label> : <label className="text-xs font-semibold space-y-1.5 sm:col-span-2">Search service or destination<div className="relative"><Search className="absolute right-3 top-3 w-4 h-4 text-slate-400" /><input className={`${tripInput} pr-10`} value={search} onChange={event => { setSearch(event.target.value); setLimit(6); }} placeholder={tab === 'Train' ? 'Train name, number or station' : 'Operator, boarding point or city'} /></div></label>}
+          <div className="flex justify-between items-start gap-4 flex-wrap"><div><h2 className="text-xl font-bold flex items-center gap-2"><ActiveIcon className="w-5 h-5 text-blue-600" />{isCab ? 'Find a cab pool' : `Find a ${tab.toLowerCase()} group`}</h2><p className="text-sm text-slate-500 mt-1">{isCab ? '15-minute departure slots · up to 4 riders per cab' : 'Meet students on the same service. Book your own ticket separately.'}</p></div>{!isCab && <button className={tripButton} onClick={() => setCreating(true)}><Plus className="w-4 h-4" />Create {tab.toLowerCase()} group</button>}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {isCab && <label className="text-xs font-semibold space-y-1.5">Route<select className={tripInput} value={direction} onChange={event => { setDirection(event.target.value); setResults([]); setLoading(true); setLimit(6); }}><option value="departing">Thapar → {community.name}</option><option value="returning">{community.name} → Thapar</option></select></label>}
             <label className="text-xs font-semibold space-y-1.5">{isCab ? 'Travel date' : 'Date (optional)'}<input type="date" className={tripInput} min={istDate()} max={istDate(30)} value={isCab ? cabDate : travelDate} onChange={event => { if (isCab) { if (!event.target.value) return; setCabDate(event.target.value); } else setTravelDate(event.target.value); setResults([]); setLoading(true); setLimit(6); }} /></label>
-            {isCab && <label className="text-xs font-semibold space-y-1.5">Depart after (optional)<input type="time" step={900} className={tripInput} value={time} onChange={event => { setTime(event.target.value); setLimit(6); }} /></label>}
+            <label className={`text-xs font-semibold space-y-1.5 ${isCab ? 'sm:col-span-2' : 'sm:col-span-2'}`}>Search {isCab ? 'time (e.g. 17:00, 5 PM) or location' : 'service or destination'}<div className="relative"><Search className="absolute right-3 top-3 w-4 h-4 text-slate-400" /><input className={`${tripInput} pr-10`} value={search} onChange={event => { setSearch(event.target.value); setLimit(6); }} placeholder={isCab ? 'Search time, landmark or location...' : tab === 'Train' ? 'Train name, number or station' : 'Operator, boarding point or city'} /></div></label>
+            {isCab && <label className="text-xs font-semibold space-y-1.5 sm:col-span-2 lg:col-span-4">Depart after (optional filter)<input type="time" step={900} className={tripInput} value={time} onChange={event => { setTime(event.target.value); setLimit(6); }} /></label>}
           </div>
-          <p className="text-xs text-slate-500">{isCab ? 'Citywide pools: agree exact pickup and stops with your group. Joining a slot does not book a vehicle.' : 'Only upcoming groups you have not joined appear here. Joined groups live in My Journeys.'}</p>
+          <p className="text-xs text-slate-500">{isCab ? 'Citywide pools: agree exact pickup and stops with your group. Joining a slot creates or joins a verified cab pool.' : 'Only upcoming groups you have not joined appear here. Joined groups live in My Journeys.'}</p>
         </div>
 
         {error && <div role="alert" className="rounded-xl bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 p-4 text-sm flex flex-wrap justify-between gap-3"><span>{error}</span><button className="underline" onClick={() => setRevision(value => value + 1)}>Try again</button></div>}

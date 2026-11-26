@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -274,8 +276,9 @@ public class CommunityService {
 
     @Transactional
     public Map<String, Object> createCityRide(String communityId, CreateCityRideRequest req, UserEntity user) {
-        if (!communityId.equals(user.getJoinedCommunity())) {
-            throw new UnauthorizedAccessException("Forbidden: You can only create transit rides for your enrolled hometown community.", 403);
+        if (user.getJoinedCommunity() == null || user.getJoinedCommunity().trim().isEmpty()) {
+            user.setJoinedCommunity(communityId);
+            userRepository.save(user);
         }
 
         if (req.getDestination() == null || req.getDate() == null || req.getTime() == null) {
@@ -338,12 +341,19 @@ public class CommunityService {
         Optional<CommunityEntity> commOpt = communityRepository.findById(communityId);
         String commName = commOpt.map(CommunityEntity::getName).orElse(communityId);
         String targetDest = (destination != null && !destination.isEmpty()) ? destination : commName;
+        String dir = (direction != null && !direction.isEmpty()) ? direction : "departing";
 
         List<CityRideEntity> rides = cityRideRepository.findByCommunityIdAndDateAndStatusIn(communityId, travelDate, List.of("Open", "Full", "Confirmed"));
         Map<String, CityRideEntity> ridesByTime = new HashMap<>();
         for (CityRideEntity r : rides) {
-            ridesByTime.put(r.getTime(), r);
+            if (dir.equalsIgnoreCase(r.getDirection())) {
+                ridesByTime.put(r.getTime(), r);
+            }
         }
+
+        String originName = "departing".equalsIgnoreCase(dir) ? "Thapar Campus (Main Gate)" : targetDest;
+        String destName = "departing".equalsIgnoreCase(dir) ? targetDest : "Thapar Campus (Main Gate)";
+        LocalDateTime nowIST = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
 
         List<Map<String, Object>> slots = new ArrayList<>();
         for (int h = 0; h < 24; h++) {
@@ -351,17 +361,29 @@ public class CommunityService {
                 String timeStr = String.format("%02d:%02d", h, m);
                 CityRideEntity r = ridesByTime.get(timeStr);
 
+                double hoursLeft = SlotEngineService.getHoursUntilDeparture(travelDate, timeStr, nowIST);
+                boolean isPast = hoursLeft < (-5.0 / 60.0);
+
+                boolean isJoined = false;
+                if (r != null && user != null) {
+                    isJoined = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(r.getId(), "CITY_RIDE")
+                            .stream().anyMatch(mem -> user.getId().equals(mem.getUserId()));
+                }
+
                 Map<String, Object> s = new LinkedHashMap<>();
-                s.put("slotKey", "comm_" + communityId + "_" + travelDate + "_" + timeStr);
+                s.put("slotKey", "comm_" + communityId + "_" + travelDate + "_" + timeStr + "_" + dir);
                 s.put("time", timeStr);
                 s.put("date", travelDate);
-                s.put("destination", targetDest);
-                s.put("direction", direction != null ? direction : "departing");
+                s.put("origin", originName);
+                s.put("destination", destName);
+                s.put("direction", dir);
                 s.put("mode", mode != null ? mode : "Cab");
+                s.put("status", r != null ? r.getStatus() : "Open");
                 s.put("seatsFilled", r != null ? r.getCurrentMembersCount() : 0);
                 s.put("maxSeats", r != null ? r.getMaxCapacity() : 4);
                 s.put("isFull", r != null && r.getCurrentMembersCount() >= r.getMaxCapacity());
-                s.put("isJoined", r != null && groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(r.getId(), "CITY_RIDE").stream().anyMatch(mem -> user.getId().equals(mem.getUserId())));
+                s.put("isJoined", isJoined);
+                s.put("isPast", isPast);
                 s.put("rideId", r != null ? r.getId() : null);
                 slots.add(s);
             }
@@ -371,16 +393,72 @@ public class CommunityService {
 
     @Transactional
     public Map<String, Object> joinCityCommunitySlot(String communityId, JoinCityCommunitySlotRequest req, UserEntity user) {
-        if (!communityId.equals(user.getJoinedCommunity())) {
-            throw new UnauthorizedAccessException("Forbidden: You can only book slots within your enrolled hometown community.", 403);
+        if (user.getJoinedCommunity() == null || user.getJoinedCommunity().trim().isEmpty()) {
+            user.setJoinedCommunity(communityId);
+            userRepository.save(user);
         }
 
-        CreateCityRideRequest rideReq = new CreateCityRideRequest();
-        rideReq.setDestination(req.getDestination());
-        rideReq.setDate(req.getDate());
-        rideReq.setTime(req.getTime());
-        rideReq.setMode(req.getMode());
-        rideReq.setDirection(req.getDirection());
-        return createCityRide(communityId, rideReq, user);
+        String travelDate = SlotEngineService.normalizeDate(req.getDate());
+        String travelTime = req.getTime() != null ? req.getTime().trim() : "12:00";
+        String tripDirection = (req.getDirection() != null && !req.getDirection().trim().isEmpty()) ? req.getDirection().trim() : "departing";
+        String selectedMode = (req.getMode() != null && !req.getMode().trim().isEmpty()) ? req.getMode().trim() : "Cab";
+
+        // Check if an existing open ride already exists for this community, date, time, and direction
+        List<CityRideEntity> existingRides = cityRideRepository.findByCommunityIdAndDateAndStatusIn(
+                communityId, travelDate, List.of("Open", "Confirmed")
+        );
+        CityRideEntity targetRide = null;
+        for (CityRideEntity r : existingRides) {
+            if (travelTime.equals(r.getTime()) && tripDirection.equalsIgnoreCase(r.getDirection())) {
+                targetRide = r;
+                break;
+            }
+        }
+
+        if (targetRide != null) {
+            List<GroupMemberEntity> currentMembers = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(targetRide.getId(), "CITY_RIDE");
+            boolean alreadyMember = currentMembers.stream().anyMatch(m -> user.getId().equals(m.getUserId()));
+            if (!alreadyMember) {
+                if (currentMembers.size() >= targetRide.getMaxCapacity()) {
+                    throw new OverbookingException("This cab ride is already full.");
+                }
+                GroupMemberEntity mem = new GroupMemberEntity();
+                mem.setId(UUID.randomUUID().toString());
+                mem.setTargetId(targetRide.getId());
+                mem.setGroupType("CITY_RIDE");
+                mem.setUserId(user.getId());
+                mem.setName(user.getName());
+                mem.setAvatar(user.getAvatar());
+                mem.setHostel(user.getHostel());
+                mem.setReliability(user.getReliability());
+                mem.setPhone(user.getPhone());
+                mem.setRole("Member");
+                mem.setJoinedAt(Instant.now());
+                groupMemberRepository.save(mem);
+
+                currentMembers.add(mem);
+                targetRide.setCurrentMembersCount(currentMembers.size());
+                if (currentMembers.size() >= targetRide.getMaxCapacity()) {
+                    targetRide.setStatus("Full");
+                }
+                cityRideRepository.save(targetRide);
+            }
+
+            user.setActiveGroupId(targetRide.getId());
+            userRepository.save(user);
+
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("success", true);
+            res.put("ride", serializerService.serializeCityRide(targetRide, currentMembers, user.getId()));
+            return res;
+        } else {
+            CreateCityRideRequest rideReq = new CreateCityRideRequest();
+            rideReq.setDestination(req.getDestination());
+            rideReq.setDate(travelDate);
+            rideReq.setTime(travelTime);
+            rideReq.setMode(selectedMode);
+            rideReq.setDirection(tripDirection);
+            return createCityRide(communityId, rideReq, user);
+        }
     }
 }
