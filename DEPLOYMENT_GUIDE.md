@@ -120,28 +120,13 @@ Caddy will automatically fetch a free Let's Encrypt SSL certificate and serve HT
 
 ---
 
-## Connecting a Persistent Cloud Database (PostgreSQL / MySQL)
+## Database Configuration (MongoDB Atlas Cloud Cluster)
 
-By default, the application runs on embedded in-memory H2. If you want user data to persist across server restarts in the cloud:
+The application uses **MongoDB Atlas** for its persistent database:
 
-### 1. Create a Free Managed PostgreSQL Database
-* On **Render**: Click **New +** $\rightarrow$ **PostgreSQL** (Free tier).
-* Or use **Supabase** / **Neon.tech** (Free serverless PostgreSQL).
-
-### 2. Add PostgreSQL Driver to `pom.xml` (Optional):
-```xml
-<dependency>
-    <groupId>org.postgresql</groupId>
-    <artifactId>postgresql</artifactId>
-    <scope>runtime</scope>
-</dependency>
-```
-
-### 3. Pass Cloud Database Credentials via Environment Variables:
-Set these environment variables in your Render/Railway dashboard:
-* `SPRING_DATASOURCE_URL` = `jdbc:postgresql://<host>:<port>/<dbname>`
-* `SPRING_DATASOURCE_DRIVER` = `org.postgresql.Driver`
-* `SPRING_DATASOURCE_USERNAME` = `<db_user>`
-* `SPRING_DATASOURCE_PASSWORD` = `<db_password>`
+### Environment Variables:
+Set these environment variables in your Render/cloud dashboard:
+* `SPRING_DATA_MONGODB_URI` = `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/thapar_journey?retryWrites=true&w=majority`
+* `SPRING_DATA_MONGODB_DATABASE` = `thapar_journey`
 
 Hibernate will automatically create all tables (`ddl-auto=update`) and `DatabaseSeederService` will populate the default TIET master data on first launch!

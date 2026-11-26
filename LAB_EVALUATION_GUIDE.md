@@ -21,8 +21,8 @@ run-local.bat
 * **Frontend Application**: [http://localhost:5173/](http://localhost:5173/) *(React 19 + Tailwind CSS)*
 * **Embedded Spring Boot UI**: [http://localhost:8080/](http://localhost:8080/) *(Self-contained bundle served by Tomcat)*
 * **REST API Health Check**: [http://localhost:8080/api/health](http://localhost:8080/api/health)
-* **Embedded H2 Database Console**: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)  
-  *(JDBC URL: `jdbc:h2:mem:thapar_journey`, Username: `sa`, Password: `<empty>`)*
+* **Real-time Event Stream (SSE)**: [http://localhost:8080/api/events/stream](http://localhost:8080/api/events/stream)
+* **Database**: MongoDB Atlas Cloud Cluster (`thapar_journey`)
 
 ### Running Automated Test Suite
 Run the test runner batch script:
@@ -44,13 +44,13 @@ run-tests.bat
 | **Multithreading & Concurrency** | Double-checked capacity guard and critical section protection using `ReentrantLock` keyed per `slotKey`. Prevents race conditions when booking the 4th (final) cab seat. Tested with 10 threads via `CountDownLatch`. | `backend/src/main/java/com/tiet/journeyconnect/services/SlotEngineService.java` & `src/test/java/.../ConcurrencyBookingTest.java` |
 | **Custom Exception Hierarchy** | `InvalidCampusDomainException` (HTTP 400), `OverbookingException` (HTTP 409), `SingleRidePolicyViolationException` (HTTP 409), `SingleCommunityRuleViolationException` (HTTP 409), `SlotNotFoundException` (HTTP 404). Handled globally via `@RestControllerAdvice`. | `backend/src/main/java/com/tiet/journeyconnect/exceptions/` & `controllers/GlobalExceptionHandler.java` |
 | **Creational Design Pattern** | **Factory Pattern**: `TravelGroupFactory.createGroup(TravelGroupType, GroupSpecification)` decouples transit cohort instantiation from business logic. | `backend/src/main/java/com/tiet/journeyconnect/factory/TravelGroupFactory.java` |
-| **Structural / Architectural Patterns** | **DTO Pattern**: `AuthDtos`, `TravelDtos`, `CommunityDtos` isolate JPA entities from external REST contracts. **Singleton Pattern**: Spring IoC container-managed services and configuration. | `backend/src/main/java/com/tiet/journeyconnect/dto/` & `config/AppConfig.java` |
+| **Structural / Architectural Patterns** | **DTO Pattern**: `AuthDtos`, `TravelDtos`, `CommunityDtos` isolate persistent entities from external REST contracts. **Singleton Pattern**: Spring IoC container-managed services and configuration. | `backend/src/main/java/com/tiet/journeyconnect/dto/` & `config/AppConfig.java` |
 
 ---
 
-## 4. Pre-Seeded Academic Test Accounts
+## 4. Pre-Seeded Academic Master Data
 
-The in-memory H2 database is automatically populated on startup with TIET-specific entities:
+The MongoDB database is automatically initialized on startup with TIET-specific static master entities (Hostels, Destinations, Communities):
 
 | Role | Email | Password | Hometown Community | Hostel | Trips Completed |
 | :--- | :--- | :--- | :--- | :--- | :--- |

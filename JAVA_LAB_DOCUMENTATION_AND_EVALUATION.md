@@ -4,7 +4,7 @@
 **Institution**: Thapar Institute of Engineering & Technology, Patiala  
 **Course**: Object-Oriented Programming (OOP) / Advanced Java Lab  
 **Project Path**: `C:\Users\sonip\.gemini\antigravity\scratch\Thapar_Journey_Connect_Java`  
-**Execution Environment**: Java 21 LTS + Spring Boot 3.3.4 + Embedded H2 Database + React 19 Frontend  
+**Execution Environment**: Java 21 LTS + Spring Boot 3.3.4 + MongoDB Atlas Database + React 19 Frontend  
 
 ---
 
@@ -27,8 +27,8 @@
 2. **Permanent Deprecation of Unused Features**:
    - Explicitly stubbed `/api/luggage/*` and `/api/vendor/*` endpoints to return HTTP 404 (Not Found).
    - Removed all legacy luggage/vendor database models and schemas.
-3. **Dual Delivery & Local-First Execution**:
-   - Embedded H2 in-memory database with automatic schema generation (`ddl-auto=update`) and zero cloud dependencies.
+3. **Dual Delivery & Cloud Execution**:
+   - MongoDB Atlas cloud cluster (`thapar_journey`) with automatic indexing and master data seeding.
    - The compiled React 19 production bundle is embedded directly inside Spring Boot's `resources/static/` directory. Evaluators can run the entire full-stack application as a single executable JAR on port `8080` or run Vite concurrently on port `5173`.
 
 ---
@@ -178,9 +178,9 @@ All custom exceptions inherit from `RuntimeException` and are intercepted by `@R
 
 ---
 
-## 6. Pre-Seeded Academic Database (Embedded H2)
+## 6. Pre-Seeded Academic Master Data (MongoDB Atlas)
 
-The application initializes an embedded H2 in-memory database with pre-seeded campus master data on startup:
+The application initializes the MongoDB Atlas cloud database with static TIET campus master data on startup:
 
 * **Destinations (4 core campus routes)**:
   1. Patiala Railway Station (`railway` — 6.2 km, ₹140 cab fare)
@@ -242,5 +242,5 @@ This automatically verifies the Java 21 runtime, launches the Spring Boot backen
 ### Access Endpoints
 * **Full-Stack Application UI**: `http://localhost:8080/` (or `http://localhost:5173/` during Vite development)
 * **REST API Health Check**: `http://localhost:8080/api/health`
-* **H2 In-Memory DB Console**: `http://localhost:8080/h2-console`  
-  *(JDBC URL: `jdbc:h2:mem:thapar_journey`, Username: `sa`, Password: `<empty>`)*
+* **Real-time Event Stream (SSE)**: `http://localhost:8080/api/events/stream`
+* **Database**: MongoDB Atlas (`thapar_journey`)
