@@ -1,39 +1,23 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "post_comments")
+@Document(collection = "post_comments")
 public class PostCommentEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "post_id", nullable = false)
-    private String postId;
-
-    @Column(name = "author_id", nullable = false)
-    private String authorId;
-
-    @Column(name = "author_name", nullable = false)
-    private String authorName;
-
-    @Column(name = "author_avatar")
-    private String authorAvatar = "ST";
-
-    @Column(name = "author_hostel")
-    private String authorHostel = "";
-
-    @Column(name = "text", length = 1000, nullable = false)
-    private String text;
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String postId;
+private String authorId;
+private String authorName;
+private String authorAvatar = "ST";
+private String authorHostel = "";
+private String text;
+private Instant createdAt = Instant.now();
 
     public PostCommentEntity() {}
 

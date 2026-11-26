@@ -1,45 +1,26 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "community_posts")
+@Document(collection = "community_posts")
 public class CommunityPostEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "community_id", nullable = false)
-    private String communityId;
-
-    @Column(name = "author_id", nullable = false)
-    private String authorId;
-
-    @Column(name = "author_name", nullable = false)
-    private String authorName;
-
-    @Column(name = "author_avatar")
-    private String authorAvatar = "ST";
-
-    @Column(name = "author_hostel")
-    private String authorHostel = "";
-
-    @Column(name = "category")
-    private String category = "Ride Sharing";
-
-    @Column(name = "title", nullable = false)
-    private String title;
-
-    @Column(name = "content", length = 3000, nullable = false)
-    private String content;
-
-    @Column(name = "likes", length = 3000)
-    private String likes = ""; // Comma-separated user IDs who liked
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String communityId;
+private String authorId;
+private String authorName;
+private String authorAvatar = "ST";
+private String authorHostel = "";
+private String category = "Ride Sharing";
+private String title;
+private String content;
+private String likes = ""; // Comma-separated user IDs who liked
+private Instant createdAt = Instant.now();
 
     public CommunityPostEntity() {}
 

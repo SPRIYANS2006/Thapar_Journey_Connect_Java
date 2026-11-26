@@ -1,39 +1,23 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "safety_reports")
+@Document(collection = "safety_reports")
 public class SafetyReportEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "reporter_id", nullable = false)
-    private String reporterId;
-
-    @Column(name = "target_user_id")
-    private String targetUserId = "";
-
-    @Column(name = "group_id")
-    private String groupId = "";
-
-    @Column(name = "category", nullable = false)
-    private String category; // 'Safety', 'Privacy / deletion', 'Rating appeal', 'Other'
-
-    @Column(name = "details", length = 3000, nullable = false)
-    private String details;
-
-    @Column(name = "status")
-    private String status = "Open"; // 'Open', 'Reviewed'
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String reporterId;
+private String targetUserId = "";
+private String groupId = "";
+private String category; // 'Safety', 'Privacy / deletion', 'Rating appeal', 'Other'
+private String details;
+private String status = "Open"; // 'Open', 'Reviewed'
+private Instant createdAt = Instant.now();
 
     public SafetyReportEntity() {}
 

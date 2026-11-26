@@ -1,90 +1,40 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "city_rides")
+@Document(collection = "city_rides")
 public class CityRideEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "community_id", nullable = false)
-    private String communityId;
-
-    @Column(name = "community_name", nullable = false)
-    private String communityName;
-
-    @Column(name = "creator_id", nullable = false)
-    private String creatorId;
-
-    @Column(name = "creator_name", nullable = false)
-    private String creatorName;
-
-    @Column(name = "origin")
-    private String origin = "Thapar Campus (Main Gate)";
-
-    @Column(name = "destination", nullable = false)
-    private String destination;
-
-    @Column(name = "date", nullable = false)
-    private String date;
-
-    @Column(name = "time", nullable = false)
-    private String time;
-
-    @Column(name = "mode", nullable = false)
-    private String mode = "Cab"; // "Cab" or "Train"
-
-    @Column(name = "pickup_point")
-    private String pickupPoint = "Main Gate";
-
-    @Column(name = "admin_fare")
-    private Double adminFare;
-
-    @Column(name = "total_fare")
-    private Double totalFare = 0.0;
-
-    @Column(name = "max_capacity")
-    private Integer maxCapacity = 4;
-
-    @Column(name = "current_members_count")
-    private Integer currentMembersCount = 1;
-
-    @Column(name = "transit_details")
-    private String transitDetails = "";
-
-    @Column(name = "notes", length = 1000)
-    private String notes = "";
-
-    @Column(name = "status")
-    private String status = "Open";
-
-    @Column(name = "direction")
-    private String direction = "departing";
-
-    @Column(name = "slot_key")
-    private String slotKey;
-
-    @Column(name = "confirmed_at")
-    private Instant confirmedAt;
-
-    @Column(name = "confirmed_by")
-    private String confirmedBy;
-
-    @Column(name = "completed_at")
-    private Instant completedAt;
-
-    @Column(name = "completed_by")
-    private String completedBy;
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String communityId;
+private String communityName;
+private String creatorId;
+private String creatorName;
+private String origin = "Thapar Campus (Main Gate)";
+private String destination;
+private String date;
+private String time;
+private String mode = "Cab"; // "Cab" or "Train"
+private String pickupPoint = "Main Gate";
+private Double adminFare;
+private Double totalFare = 0.0;
+private Integer maxCapacity = 4;
+private Integer currentMembersCount = 1;
+private String transitDetails = "";
+private String notes = "";
+private String status = "Open";
+private String direction = "departing";
+private String slotKey;
+private Instant confirmedAt;
+private String confirmedBy;
+private Instant completedAt;
+private String completedBy;
+private Instant createdAt = Instant.now();
 
     public CityRideEntity() {}
 

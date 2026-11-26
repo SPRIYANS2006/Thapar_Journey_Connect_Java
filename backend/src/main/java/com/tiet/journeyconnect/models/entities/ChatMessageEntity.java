@@ -1,38 +1,23 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "chat_messages", indexes = {
-    @Index(name = "idx_chat_group", columnList = "group_id")
-})
+@Document(collection = "chat_messages")
 public class ChatMessageEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "group_id", nullable = false)
-    private String groupId;
-
-    @Column(name = "sender_id", nullable = false)
-    private String senderId;
-
-    @Column(name = "sender_name", nullable = false)
-    private String senderName;
-
-    @Column(name = "sender_avatar")
-    private String senderAvatar = "ST";
-
-    @Column(name = "sender_hostel")
-    private String senderHostel = "";
-
-    @Column(name = "text", length = 2000, nullable = false)
-    private String text;
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String groupId;
+private String senderId;
+private String senderName;
+private String senderAvatar = "ST";
+private String senderHostel = "";
+private String text;
+private Instant createdAt = Instant.now();
 
     public ChatMessageEntity() {}
 

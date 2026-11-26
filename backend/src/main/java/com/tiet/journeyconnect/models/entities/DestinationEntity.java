@@ -1,35 +1,21 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "destinations")
+
+@Document(collection = "destinations")
 public class DestinationEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "name", nullable = false)
-    private String name;
-
-    @Column(name = "icon")
-    private String icon = "📍";
-
-    @Column(name = "description", length = 500)
-    private String description = "";
-
-    @Column(name = "popular_time")
-    private String popularTime = "";
-
-    @Column(name = "distance")
-    private String distance = "";
-
-    @Column(name = "avg_cab_fare")
-    private String avgCabFare = "";
+private String id;
+private String name;
+private String icon = "📍";
+private String description = "";
+private String popularTime = "";
+private String distance = "";
+private String avgCabFare = "";
 
     public DestinationEntity() {}
 

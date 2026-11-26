@@ -1,75 +1,35 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "travel_groups")
+@Document(collection = "travel_groups")
 public class GroupEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "destination_id", nullable = false)
-    private String destinationId;
-
-    @Column(name = "destination_name", nullable = false)
-    private String destinationName;
-
-    @Column(name = "departure_time", nullable = false)
-    private String departureTime;
-
-    @Column(name = "date", nullable = false)
-    private String date;
-
-    @Column(name = "status")
-    private String status = "Open";
-
-    @Column(name = "transport")
-    private String transport = "Shared Cab";
-
-    @Column(name = "max_members")
-    private Integer maxMembers = 4;
-
-    @Column(name = "admin_fare")
-    private Double adminFare;
-
-    @Column(name = "pickup_point")
-    private String pickupPoint = "Main Gate";
-
-    @Column(name = "origin")
-    private String origin = "Thapar Institute";
-
-    @Column(name = "direction")
-    private String direction = "departing";
-
-    @Column(name = "match_score")
-    private Integer matchScore = 95;
-
-    @Column(name = "slot_key")
-    private String slotKey;
-
-    @Column(name = "admin_id", nullable = false)
-    private String adminId;
-
-    @Column(name = "confirmed_at")
-    private Instant confirmedAt;
-
-    @Column(name = "confirmed_by")
-    private String confirmedBy;
-
-    @Column(name = "completed_at")
-    private Instant completedAt;
-
-    @Column(name = "completed_by")
-    private String completedBy;
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String destinationId;
+private String destinationName;
+private String departureTime;
+private String date;
+private String status = "Open";
+private String transport = "Shared Cab";
+private Integer maxMembers = 4;
+private Double adminFare;
+private String pickupPoint = "Main Gate";
+private String origin = "Thapar Institute";
+private String direction = "departing";
+private Integer matchScore = 95;
+private String slotKey;
+private String adminId;
+private Instant confirmedAt;
+private String confirmedBy;
+private Instant completedAt;
+private String completedBy;
+private Instant createdAt = Instant.now();
 
     public GroupEntity() {}
 

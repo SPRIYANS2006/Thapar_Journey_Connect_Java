@@ -30,9 +30,10 @@
         </dependency>
 
         <!-- Spring Boot Data JPA for Database Persistence -->
+                <!-- Spring Boot Data MongoDB for Database Persistence -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
         <!-- Bean Validation -->
@@ -45,20 +46,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
-        </dependency>
-
-        <!-- Embedded H2 Database (zero external setup required) -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- PostgreSQL Driver for Cloud Deployment (Render, Supabase, Neon) -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- JWT for Stateless Session Token Management -->

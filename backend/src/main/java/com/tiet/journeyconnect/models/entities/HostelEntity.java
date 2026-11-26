@@ -1,26 +1,18 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "hostels")
+
+@Document(collection = "hostels")
 public class HostelEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "name", nullable = false)
-    private String name;
-
-    @Column(name = "gender", nullable = false)
-    private String gender;
-
-    @Column(name = "cluster", nullable = false)
-    private String cluster;
+private String id;
+private String name;
+private String gender;
+private String cluster;
 
     public HostelEntity() {}
 

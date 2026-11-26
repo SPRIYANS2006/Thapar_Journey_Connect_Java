@@ -1,84 +1,39 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class UserEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "name", nullable = false)
-    private String name;
-
-    @Column(name = "email", nullable = false, unique = true)
-    private String email;
-
-    @Column(name = "password_hash")
-    private String passwordHash;
-
-    @Column(name = "hostel")
-    private String hostel = "";
-
-    @Column(name = "avatar")
-    private String avatar = "ST";
-
-    @Column(name = "phone")
-    private String phone = "";
-
-    @Column(name = "degree")
-    private String degree = "";
-
-    @Column(name = "study_year")
-    private String year = "";
-
-    @Column(name = "hometown")
-    private String hometown = "";
-
-    @Column(name = "roll_number")
-    private String rollNumber = "";
-
-    @Column(name = "preferred_transport")
-    private String preferredTransport = "Cab";
-
-    @Column(name = "time_window")
-    private String timeWindow = "Every 15 Minutes";
-
-    @Column(name = "frequent_routes")
-    private String frequentRoutes = ""; // Comma-separated routes
-
-    @Column(name = "ride_notifications")
-    private Boolean rideNotifications = true;
-
-    @Column(name = "disabled")
-    private Boolean disabled = false;
-
-    @Column(name = "muted_users", length = 1000)
-    private String mutedUsers = ""; // Comma-separated user IDs
-
-    @Column(name = "token_version")
-    private Integer tokenVersion = 1;
-
-    @Column(name = "reliability")
-    private Double reliability = 5.0;
-
-    @Column(name = "trips_completed")
-    private Integer tripsCompleted = 0;
-
-    @Column(name = "role")
-    private String role = "student";
-
-    @Column(name = "active_group_id")
-    private String activeGroupId;
-
-    @Column(name = "joined_community")
-    private String joinedCommunity;
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String name;
+private String email;
+private String passwordHash;
+private String hostel = "";
+private String avatar = "ST";
+private String phone = "";
+private String degree = "";
+private String year = "";
+private String hometown = "";
+private String rollNumber = "";
+private String preferredTransport = "Cab";
+private String timeWindow = "Every 15 Minutes";
+private String frequentRoutes = ""; // Comma-separated routes
+private Boolean rideNotifications = true;
+private Boolean disabled = false;
+private String mutedUsers = ""; // Comma-separated user IDs
+private Integer tokenVersion = 1;
+private Double reliability = 5.0;
+private Integer tripsCompleted = 0;
+private String role = "student";
+private String activeGroupId;
+private String joinedCommunity;
+private Instant createdAt = Instant.now();
 
     public UserEntity() {}
 

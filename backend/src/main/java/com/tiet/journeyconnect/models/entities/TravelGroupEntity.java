@@ -1,69 +1,33 @@
 package com.tiet.journeyconnect.models.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.Instant;
 
-@Entity
-@Table(name = "cohort_travel_groups")
+@Document(collection = "cohort_travel_groups")
 public class TravelGroupEntity {
 
     @Id
-    @Column(name = "id", nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "type", nullable = false)
-    private String type; // "Train" or "Bus"
-
-    @Column(name = "title", nullable = false)
-    private String title;
-
-    @Column(name = "community_id", nullable = false)
-    private String communityId;
-
-    @Column(name = "community_name", nullable = false)
-    private String communityName;
-
-    @Column(name = "creator_id", nullable = false)
-    private String creatorId;
-
-    @Column(name = "creator_name", nullable = false)
-    private String creatorName;
-
-    @Column(name = "date", nullable = false)
-    private String date;
-
-    @Column(name = "departure_time", nullable = false)
-    private String departureTime;
-
-    @Column(name = "boarding_point", nullable = false)
-    private String boardingPoint;
-
-    @Column(name = "destination", nullable = false)
-    private String destination;
-
-    @Column(name = "train_number")
-    private String trainNumber = "";
-
-    @Column(name = "travel_class")
-    private String travelClass = "";
-
-    @Column(name = "bus_operator")
-    private String busOperator = "";
-
-    @Column(name = "description", length = 1000)
-    private String description = "";
-
-    @Column(name = "members_count")
-    private Integer membersCount = 1;
-
-    @Column(name = "status")
-    private String status = "Open";
-
-    @Column(name = "created_at")
-    private Instant createdAt = Instant.now();
+private String id;
+private String type; // "Train" or "Bus"
+private String title;
+private String communityId;
+private String communityName;
+private String creatorId;
+private String creatorName;
+private String date;
+private String departureTime;
+private String boardingPoint;
+private String destination;
+private String trainNumber = "";
+private String travelClass = "";
+private String busOperator = "";
+private String description = "";
+private Integer membersCount = 1;
+private String status = "Open";
+private Instant createdAt = Instant.now();
 
     public TravelGroupEntity() {}
 
