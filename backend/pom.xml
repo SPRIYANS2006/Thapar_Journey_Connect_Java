@@ -29,8 +29,7 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Spring Boot Data JPA for Database Persistence -->
-                <!-- Spring Boot Data MongoDB for Database Persistence -->
+        <!-- Spring Boot Data MongoDB for Database Persistence -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>

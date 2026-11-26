@@ -53,11 +53,8 @@ if not exist "%JAR_FILE%" (
 echo.
 echo ===============================================================================
 echo [1/2] Launching Spring Boot Backend on http://localhost:8080 ...
-echo       * Embedded Database : H2 in-memory (zero configuration)
-echo       * H2 Console Path   : http://localhost:8080/h2-console
-echo       * Test Student #1   : student1@thapar.edu / Thapar@123
-echo       * Test Student #2   : student2@thapar.edu / Thapar@123
-echo       * Test Admin Desk   : admin@thapar.edu    / Thapar@123
+echo       * Database          : MongoDB Atlas Cloud Cluster
+echo       * Real-time Sync    : Enabled
 echo ===============================================================================
 start "Thapar Journey Connect - Spring Boot Backend (Port 8080)" cmd /k "cd /d \"%BACKEND_DIR%\" && java -jar \"%JAR_FILE%\""
 
@@ -78,7 +75,7 @@ echo     SUCCESSFULLY LAUNCHED LOCAL LAB EVALUATION ENVIRONMENT
 echo.
 echo     Frontend UI       : http://localhost:5173
 echo     Spring REST API   : http://localhost:8080/api/health
-echo     H2 DB Console     : http://localhost:8080/h2-console (JDBC URL: jdbc:h2:mem:thapar_journey)
+echo     Database          : MongoDB Atlas (thapar_journey)
 echo ===============================================================================
 echo.
 pause

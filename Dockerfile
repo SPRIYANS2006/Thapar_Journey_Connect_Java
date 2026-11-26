@@ -1,29 +1,18 @@
 # -------------------------------------------------------------
-# Stage 1: Build the React 19 Frontend
-# -------------------------------------------------------------
-FROM node:22-alpine AS frontend-builder
-WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm install
-
-COPY frontend/ ./
-RUN npm run build
-
-# -------------------------------------------------------------
-# Stage 2: Build the Spring Boot Backend with Embedded UI
+# Stage 1: Build the Spring Boot Backend with Embedded UI
 # -------------------------------------------------------------
 FROM maven:3.9.6-eclipse-temurin-21-alpine AS backend-builder
 WORKDIR /app/backend
 
+# Copy backend source (including static UI assets) and Maven POM
 COPY backend/pom.xml ./
 COPY backend/src ./src
-# Embed frontend build into Spring Boot static resources
-COPY --from=frontend-builder /app/frontend/dist ./src/main/resources/static/
+
+# Build production JAR package skipping unit tests for fast deploy
 RUN mvn clean package -DskipTests
 
 # -------------------------------------------------------------
-# Stage 3: Lightweight Production JRE 21 Runtime Container
+# Stage 2: Ultra-lightweight Production JRE 21 Runtime Container
 # -------------------------------------------------------------
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
@@ -32,6 +21,7 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
+# Copy built JAR from builder stage
 COPY --from=backend-builder /app/backend/target/thapar-journey-connect-backend-1.0.0.jar app.jar
 
 ENV PORT=8080

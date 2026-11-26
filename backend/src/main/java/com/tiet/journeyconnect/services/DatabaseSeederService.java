@@ -4,15 +4,14 @@ import com.tiet.journeyconnect.models.entities.*;
 import com.tiet.journeyconnect.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
- * Seeds static campus data (Destinations, Hostels, Communities) and pre-configured
- * test student accounts into the embedded H2 database at startup.
+ * Seeds static campus master data (Destinations, Hostels, Communities)
+ * into MongoDB at startup if collections are empty.
+ * Note: Test student accounts are removed to ensure a clean database.
  */
 @Service
 public class DatabaseSeederService implements CommandLineRunner {
@@ -26,18 +25,11 @@ public class DatabaseSeederService implements CommandLineRunner {
     @Autowired
     private CommunityRepository communityRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
     @Override
     public void run(String... args) {
         seedDestinations();
         seedHostels();
         seedCommunities();
-        seedTestAccounts();
     }
 
     private void seedDestinations() {
@@ -90,7 +82,7 @@ public class DatabaseSeederService implements CommandLineRunner {
             del.setPopularTransport("Shatabdi Express, Long Cabs, Volvos");
             del.setDescription("Student network for South Delhi, Noida, Gurgaon, West Delhi & IGI Airport transit.");
             del.setTags("Holiday Rush,Shatabdi Cohort,IGI Airport");
-            del.setMembersCount(2);
+            del.setMembersCount(0);
 
             CommunityEntity jal = new CommunityEntity();
             jal.setId("jal");
@@ -153,118 +145,6 @@ public class DatabaseSeederService implements CommandLineRunner {
             jpr.setTags("Semester Breaks,Holiday Trains");
 
             communityRepository.saveAll(List.of(del, jal, ldh, chd, asr, bth, jpr));
-        }
-    }
-
-    private void seedTestAccounts() {
-        String testPasswordHash = passwordEncoder.encode("Thapar@123");
-
-        if (userRepository.findByEmailIgnoreCase("student1@thapar.edu").isEmpty()) {
-            UserEntity u1 = new UserEntity();
-            u1.setId("student_aarav");
-            u1.setName("Aarav Sharma");
-            u1.setEmail("student1@thapar.edu");
-            u1.setPasswordHash(testPasswordHash);
-            u1.setHostel("Tejas Hall (Hostel-J)");
-            u1.setAvatar("AS");
-            u1.setPhone("9876543210");
-            u1.setDegree("B.E. Computer Engineering");
-            u1.setYear("3rd Year");
-            u1.setHometown("Delhi NCR");
-            u1.setReliability(5.0);
-            u1.setTripsCompleted(4);
-            u1.setJoinedCommunity("del");
-            userRepository.save(u1);
-        }
-
-        if (userRepository.findByEmailIgnoreCase("student2@thapar.edu").isEmpty()) {
-            UserEntity u2 = new UserEntity();
-            u2.setId("student_diya");
-            u2.setName("Diya Verma");
-            u2.setEmail("student2@thapar.edu");
-            u2.setPasswordHash(testPasswordHash);
-            u2.setHostel("Vasudha Hall (Hostel-E)");
-            u2.setAvatar("DV");
-            u2.setPhone("9876543211");
-            u2.setDegree("B.E. Electronics & Communication");
-            u2.setYear("2nd Year");
-            u2.setHometown("Delhi NCR");
-            u2.setReliability(4.9);
-            u2.setTripsCompleted(2);
-            u2.setJoinedCommunity("del");
-            userRepository.save(u2);
-        }
-
-        if (userRepository.findByEmailIgnoreCase("test.student1@thapar.edu").isEmpty()) {
-            UserEntity u3 = new UserEntity();
-            u3.setId("student_aarav_alias");
-            u3.setName("Aarav Sharma");
-            u3.setEmail("test.student1@thapar.edu");
-            u3.setPasswordHash(testPasswordHash);
-            u3.setHostel("Tejas Hall (Hostel-J)");
-            u3.setAvatar("AS");
-            u3.setPhone("9876543210");
-            u3.setDegree("B.E. Computer Engineering");
-            u3.setYear("3rd Year");
-            u3.setHometown("Delhi NCR");
-            u3.setReliability(5.0);
-            u3.setTripsCompleted(4);
-            u3.setJoinedCommunity("del");
-            userRepository.save(u3);
-        }
-
-        if (userRepository.findByEmailIgnoreCase("test.student2@thapar.edu").isEmpty()) {
-            UserEntity u4 = new UserEntity();
-            u4.setId("student_diya_alias");
-            u4.setName("Diya Verma");
-            u4.setEmail("test.student2@thapar.edu");
-            u4.setPasswordHash(testPasswordHash);
-            u4.setHostel("Vasudha Hall (Hostel-E)");
-            u4.setAvatar("DV");
-            u4.setPhone("9876543211");
-            u4.setDegree("B.E. Electronics & Communication");
-            u4.setYear("2nd Year");
-            u4.setHometown("Delhi NCR");
-            u4.setReliability(4.9);
-            u4.setTripsCompleted(2);
-            u4.setJoinedCommunity("del");
-            userRepository.save(u4);
-        }
-
-        if (userRepository.findByEmailIgnoreCase("admin@thapar.edu").isEmpty()) {
-            UserEntity admin = new UserEntity();
-            admin.setId("admin_thapar");
-            admin.setName("Thapar Admin Desk");
-            admin.setEmail("admin@thapar.edu");
-            admin.setPasswordHash(testPasswordHash);
-            admin.setHostel("Administrative Block");
-            admin.setAvatar("AD");
-            admin.setPhone("9888999999");
-            admin.setDegree("Dean of Student Affairs Office");
-            admin.setYear("Administration");
-            admin.setHometown("Patiala");
-            admin.setReliability(5.0);
-            admin.setTripsCompleted(0);
-            admin.setRole("admin");
-            userRepository.save(admin);
-        }
-
-        if (userRepository.findByEmailIgnoreCase("student@thapar.edu").isEmpty()) {
-            UserEntity genericStudent = new UserEntity();
-            genericStudent.setId("student_default");
-            genericStudent.setName("Campus Student");
-            genericStudent.setEmail("student@thapar.edu");
-            genericStudent.setPasswordHash(testPasswordHash);
-            genericStudent.setHostel("Tejas Hall (Hostel-J)");
-            genericStudent.setAvatar("CS");
-            genericStudent.setPhone("9876543212");
-            genericStudent.setDegree("B.E. Computer Engineering");
-            genericStudent.setYear("3rd Year");
-            genericStudent.setHometown("Delhi NCR");
-            genericStudent.setReliability(5.0);
-            genericStudent.setTripsCompleted(1);
-            genericStudent.setJoinedCommunity("del");
-            userRepository.save(genericStudent);
         }
     }
 }
