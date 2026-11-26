@@ -33,6 +33,12 @@ public class TravelGroupService {
     @Autowired
     private SerializerService serializerService;
 
+    @Autowired
+    private RidePolicyService ridePolicyService;
+
+    @Autowired
+    private NotificationService notificationService;
+
     public List<Map<String, Object>> getTravelGroups(String type, String communityId, String search, String date, Boolean excludeJoined, UserEntity user) {
         List<TravelGroupEntity> all = travelGroupRepository.findByStatusOrderByDateAscDepartureTimeAsc("Open");
         List<Map<String, Object>> result = new ArrayList<>();
@@ -102,6 +108,9 @@ public class TravelGroupService {
 
     @Transactional
     public Map<String, Object> createTravelGroup(CreateTravelGroupRequest req, UserEntity user) {
+        // Enforce campus-wide Single-Ride Policy
+        ridePolicyService.validateSingleRidePolicy(user.getId(), null);
+
         if (req.getType() == null || (!req.getType().equalsIgnoreCase("Train") && !req.getType().equalsIgnoreCase("Bus"))) {
             throw new IllegalArgumentException("Travel group type must be either \"Train\" or \"Bus\".");
         }
@@ -191,8 +200,15 @@ public class TravelGroupService {
 
         List<GroupMemberEntity> members = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(tg.getId(), "TRAVEL_GROUP");
         if (members.stream().anyMatch(m -> user.getId().equals(m.getUserId()))) {
-            throw new IllegalArgumentException("You are already enrolled in this travel group.");
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("success", true);
+            res.put("message", "You are already enrolled in this travel group.");
+            res.put("group", serializerService.serializeTravelGroup(tg, members, user.getId()));
+            return res;
         }
+
+        // Enforce campus-wide Single-Ride Policy across all categories
+        ridePolicyService.validateSingleRidePolicy(user.getId(), id);
 
         GroupMemberEntity mem = new GroupMemberEntity();
         mem.setId(UUID.randomUUID().toString());
@@ -212,6 +228,15 @@ public class TravelGroupService {
         members.add(mem);
         tg.setMembersCount(members.size());
         travelGroupRepository.save(tg);
+
+        notificationService.broadcastMemberJoined(
+                tg.getId(),
+                "TRAVEL_GROUP",
+                tg.getDestination(),
+                user,
+                members.size(),
+                10
+        );
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true);
@@ -243,6 +268,15 @@ public class TravelGroupService {
                 groupMemberRepository.save(nextAdmin);
             }
             travelGroupRepository.save(tg);
+
+            notificationService.broadcastMemberLeft(
+                    tg.getId(),
+                    "TRAVEL_GROUP",
+                    tg.getDestination(),
+                    user,
+                    members.size(),
+                    10
+            );
         }
 
         Map<String, Object> res = new LinkedHashMap<>();
@@ -286,6 +320,10 @@ public class TravelGroupService {
         msg.setText(req.getText().trim());
         msg.setCreatedAt(Instant.now());
         msg = chatMessageRepository.save(msg);
+
+        Optional<TravelGroupEntity> tgOpt = travelGroupRepository.findById(id);
+        String destName = tgOpt.map(TravelGroupEntity::getDestination).orElse("Travel Group");
+        notificationService.broadcastChatMessage(id, "TRAVEL_GROUP", destName, msg);
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true);

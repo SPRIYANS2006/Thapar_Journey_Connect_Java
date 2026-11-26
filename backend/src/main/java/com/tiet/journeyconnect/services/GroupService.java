@@ -45,6 +45,12 @@ public class GroupService {
     @Autowired
     private SlotEngineService slotEngineService;
 
+    @Autowired
+    private RidePolicyService ridePolicyService;
+
+    @Autowired
+    private NotificationService notificationService;
+
     public List<Map<String, Object>> getMyGroups(UserEntity user) {
         List<GroupMemberEntity> memberships = groupMemberRepository.findByUserId(user.getId());
         List<Map<String, Object>> merged = new ArrayList<>();
@@ -148,8 +154,15 @@ public class GroupService {
 
             List<GroupMemberEntity> members = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(ride.getId(), "CITY_RIDE");
             if (members.stream().anyMatch(m -> user.getId().equals(m.getUserId()))) {
-                throw new IllegalArgumentException("You are already a member of this ride.");
+                Map<String, Object> res = new LinkedHashMap<>();
+                res.put("success", true);
+                res.put("message", "You are already a member of this ride.");
+                res.put("group", serializerService.serializeCityRideAsGroup(ride, members, user.getId()));
+                return res;
             }
+
+            // Enforce Single-Ride Policy across all categories
+            ridePolicyService.validateSingleRidePolicy(user.getId(), id);
 
             if (members.size() >= ride.getMaxCapacity()) {
                 throw new OverbookingException("This ride is already full.");
@@ -175,6 +188,15 @@ public class GroupService {
                 ride.setStatus("Full");
             }
             cityRideRepository.save(ride);
+
+            notificationService.broadcastMemberJoined(
+                    ride.getId(),
+                    "CITY_RIDE",
+                    ride.getDestination(),
+                    user,
+                    members.size(),
+                    ride.getMaxCapacity()
+            );
 
             Map<String, Object> res = new LinkedHashMap<>();
             res.put("success", true);
@@ -237,6 +259,15 @@ public class GroupService {
                 ride.setCurrentMembersCount(members.size());
                 cityRideRepository.save(ride);
 
+                notificationService.broadcastMemberLeft(
+                        ride.getId(),
+                        "CITY_RIDE",
+                        ride.getDestination(),
+                        user,
+                        members.size(),
+                        ride.getMaxCapacity()
+                );
+
                 Map<String, Object> res = new LinkedHashMap<>();
                 res.put("message", "Successfully left the ride.");
                 return res;
@@ -293,6 +324,15 @@ public class GroupService {
             alert.setSenderAvatar("PA");
             alert.setText("⚠️ Notice: " + user.getName() + " left Group #" + group.getId() + "." + (penalty > 0 ? " (Departure plans changed)" : ""));
             chatMessageRepository.save(alert);
+
+            notificationService.broadcastMemberLeft(
+                    group.getId(),
+                    "CAMPUS_GROUP",
+                    group.getDestinationName(),
+                    user,
+                    members.size(),
+                    group.getMaxMembers() != null ? group.getMaxMembers() : 4
+            );
         }
 
         user.setActiveGroupId(null);
@@ -321,6 +361,8 @@ public class GroupService {
             ride.setConfirmedBy(user.getId());
             cityRideRepository.save(ride);
 
+            notificationService.broadcastGroupConfirmed(ride.getId(), "CITY_RIDE", ride.getDestination());
+
             List<GroupMemberEntity> members = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(ride.getId(), "CITY_RIDE");
             Map<String, Object> res = new LinkedHashMap<>();
             res.put("success", true);
@@ -340,6 +382,8 @@ public class GroupService {
         group.setConfirmedAt(Instant.now());
         group.setConfirmedBy(user.getId());
         groupRepository.save(group);
+
+        notificationService.broadcastGroupConfirmed(group.getId(), "CAMPUS_GROUP", group.getDestinationName());
 
         List<GroupMemberEntity> members = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(group.getId(), "CAMPUS_GROUP");
         Map<String, Object> res = new LinkedHashMap<>();
@@ -513,6 +557,16 @@ public class GroupService {
         msg.setText(req.getText().trim());
         msg.setCreatedAt(Instant.now());
         chatMessageRepository.save(msg);
+
+        if (id.startsWith("cr_")) {
+            Optional<CityRideEntity> rOpt = cityRideRepository.findById(id);
+            String dest = rOpt.map(CityRideEntity::getDestination).orElse("City Cab");
+            notificationService.broadcastChatMessage(id, "CITY_RIDE", dest, msg);
+        } else {
+            Optional<GroupEntity> gOpt = groupRepository.findById(id);
+            String dest = gOpt.map(GroupEntity::getDestinationName).orElse("Campus Ride");
+            notificationService.broadcastChatMessage(id, "CAMPUS_GROUP", dest, msg);
+        }
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("success", true);

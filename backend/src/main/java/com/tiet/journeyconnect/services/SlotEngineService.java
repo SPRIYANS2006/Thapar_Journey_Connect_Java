@@ -62,6 +62,12 @@ public class SlotEngineService {
     @Autowired
     private SerializerService serializerService;
 
+    @Autowired
+    private RidePolicyService ridePolicyService;
+
+    @Autowired
+    private NotificationService notificationService;
+
     private ReentrantLock getLock(String key) {
         return slotLocks.computeIfAbsent(key, k -> new ReentrantLock());
     }
@@ -211,9 +217,6 @@ public class SlotEngineService {
         ReentrantLock lock = getLock(slotKey);
         lock.lock();
         try {
-            // Enforce Single-Ride Policy
-            checkSingleRidePolicy(user.getId(), slotKey, req.getDestinationId(), travelDate, time, tripDirection, selectedVehicle);
-
             // Check if active group already exists for this slot
             List<GroupEntity> activeGroups = groupRepository.findByDestinationIdAndDateAndStatusIn(
                     req.getDestinationId(), travelDate, List.of("Open", "Confirmed")
@@ -228,6 +231,22 @@ public class SlotEngineService {
                     break;
                 }
             }
+
+            if (existingGroup != null) {
+                List<GroupMemberEntity> currentMembers = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(existingGroup.getId(), "CAMPUS_GROUP");
+                boolean alreadyMember = currentMembers.stream().anyMatch(m -> user.getId().equals(m.getUserId()));
+                if (alreadyMember) {
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    result.put("success", true);
+                    result.put("message", "You are already a member of Group #" + existingGroup.getId() + ".");
+                    result.put("group", serializerService.serializeGroup(existingGroup, currentMembers, user.getId()));
+                    result.put("created", false);
+                    return result;
+                }
+            }
+
+            // Enforce Campus-wide Single-Ride Policy across all categories
+            ridePolicyService.validateSingleRidePolicy(user.getId(), existingGroup != null ? existingGroup.getId() : null);
 
             boolean isCreated = false;
             GroupEntity targetGroup;
@@ -296,6 +315,17 @@ public class SlotEngineService {
             userRepository.save(user);
 
             List<GroupMemberEntity> updatedMembers = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(targetGroup.getId(), "CAMPUS_GROUP");
+
+            if (!isCreated) {
+                notificationService.broadcastMemberJoined(
+                        targetGroup.getId(),
+                        "CAMPUS_GROUP",
+                        targetGroup.getDestinationName(),
+                        user,
+                        updatedMembers.size(),
+                        targetGroup.getMaxMembers() != null ? targetGroup.getMaxMembers() : 4
+                );
+            }
 
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("success", true);
@@ -435,6 +465,15 @@ public class SlotEngineService {
             leaveAlert.setSenderAvatar("PA");
             leaveAlert.setText("⚠️ Notice: " + user.getName() + " rescheduled their journey to another travel slot." + (penalty > 0 ? " (Late rescheduling penalty: -" + penalty + "⭐)" : ""));
             chatMessageRepository.save(leaveAlert);
+
+            notificationService.broadcastMemberLeft(
+                    oldGroup.getId(),
+                    "CAMPUS_GROUP",
+                    oldGroup.getDestinationName(),
+                    user,
+                    remainingOldMembers.size(),
+                    oldGroup.getMaxMembers() != null ? oldGroup.getMaxMembers() : 4
+            );
         }
 
         // 3. Join target group
@@ -452,34 +491,6 @@ public class SlotEngineService {
         result.put("penaltyAmount", penalty);
         result.put("newReliability", newReliability);
         return result;
-    }
-
-    private void checkSingleRidePolicy(String userId, String slotKey, String destinationId, String date, String time, String direction, String vehicle) {
-        List<GroupMemberEntity> userMemberships = groupMemberRepository.findByUserId(userId);
-        for (GroupMemberEntity mem : userMemberships) {
-            if ("CAMPUS_GROUP".equals(mem.getGroupType())) {
-                Optional<GroupEntity> gOpt = groupRepository.findById(mem.getTargetId());
-                if (gOpt.isPresent()) {
-                    GroupEntity g = gOpt.get();
-                    if ("Open".equalsIgnoreCase(g.getStatus()) || "Confirmed".equalsIgnoreCase(g.getStatus())) {
-                        if (slotKey.equals(g.getSlotKey()) ||
-                                (g.getDestinationId().equals(destinationId) && g.getDate().equals(date) && g.getDepartureTime().equals(time))) {
-                            // Already in this exact slot
-                            return;
-                        }
-                        throw new SingleRidePolicyViolationException(g.getId(), g.getDestinationName());
-                    }
-                }
-            } else if ("CITY_RIDE".equals(mem.getGroupType())) {
-                Optional<CityRideEntity> rOpt = cityRideRepository.findById(mem.getTargetId());
-                if (rOpt.isPresent()) {
-                    CityRideEntity r = rOpt.get();
-                    if ("Open".equalsIgnoreCase(r.getStatus()) || "Confirmed".equalsIgnoreCase(r.getStatus()) || "Full".equalsIgnoreCase(r.getStatus())) {
-                        throw new SingleRidePolicyViolationException(r.getId(), r.getDestination() + " (" + r.getCommunityName() + ")");
-                    }
-                }
-            }
-        }
     }
 
     public static String normalizeDate(String input) {

@@ -41,6 +41,12 @@ public class CommunityService {
     @Autowired
     private SerializerService serializerService;
 
+    @Autowired
+    private RidePolicyService ridePolicyService;
+
+    @Autowired
+    private NotificationService notificationService;
+
     public List<Map<String, Object>> getCommunities() {
         List<CommunityEntity> list = communityRepository.findAllByOrderByMembersCountDescNameAsc();
         List<Map<String, Object>> result = new ArrayList<>();
@@ -276,6 +282,9 @@ public class CommunityService {
 
     @Transactional
     public Map<String, Object> createCityRide(String communityId, CreateCityRideRequest req, UserEntity user) {
+        // Enforce campus-wide Single-Ride Policy
+        ridePolicyService.validateSingleRidePolicy(user.getId(), null);
+
         if (user.getJoinedCommunity() == null || user.getJoinedCommunity().trim().isEmpty()) {
             user.setJoinedCommunity(communityId);
             userRepository.save(user);
@@ -418,34 +427,52 @@ public class CommunityService {
         if (targetRide != null) {
             List<GroupMemberEntity> currentMembers = groupMemberRepository.findByTargetIdAndGroupTypeOrderByJoinedAtAsc(targetRide.getId(), "CITY_RIDE");
             boolean alreadyMember = currentMembers.stream().anyMatch(m -> user.getId().equals(m.getUserId()));
-            if (!alreadyMember) {
-                if (currentMembers.size() >= targetRide.getMaxCapacity()) {
-                    throw new OverbookingException("This cab ride is already full.");
-                }
-                GroupMemberEntity mem = new GroupMemberEntity();
-                mem.setId(UUID.randomUUID().toString());
-                mem.setTargetId(targetRide.getId());
-                mem.setGroupType("CITY_RIDE");
-                mem.setUserId(user.getId());
-                mem.setName(user.getName());
-                mem.setAvatar(user.getAvatar());
-                mem.setHostel(user.getHostel());
-                mem.setReliability(user.getReliability());
-                mem.setPhone(user.getPhone());
-                mem.setRole("Member");
-                mem.setJoinedAt(Instant.now());
-                groupMemberRepository.save(mem);
-
-                currentMembers.add(mem);
-                targetRide.setCurrentMembersCount(currentMembers.size());
-                if (currentMembers.size() >= targetRide.getMaxCapacity()) {
-                    targetRide.setStatus("Full");
-                }
-                cityRideRepository.save(targetRide);
+            if (alreadyMember) {
+                Map<String, Object> res = new LinkedHashMap<>();
+                res.put("success", true);
+                res.put("message", "You are already a member of this cab ride.");
+                res.put("ride", serializerService.serializeCityRide(targetRide, currentMembers, user.getId()));
+                return res;
             }
+
+            // Enforce campus-wide Single-Ride Policy across all categories
+            ridePolicyService.validateSingleRidePolicy(user.getId(), targetRide.getId());
+
+            if (currentMembers.size() >= targetRide.getMaxCapacity()) {
+                throw new OverbookingException("This cab ride is already full.");
+            }
+            GroupMemberEntity mem = new GroupMemberEntity();
+            mem.setId(UUID.randomUUID().toString());
+            mem.setTargetId(targetRide.getId());
+            mem.setGroupType("CITY_RIDE");
+            mem.setUserId(user.getId());
+            mem.setName(user.getName());
+            mem.setAvatar(user.getAvatar());
+            mem.setHostel(user.getHostel());
+            mem.setReliability(user.getReliability());
+            mem.setPhone(user.getPhone());
+            mem.setRole("Member");
+            mem.setJoinedAt(Instant.now());
+            groupMemberRepository.save(mem);
+
+            currentMembers.add(mem);
+            targetRide.setCurrentMembersCount(currentMembers.size());
+            if (currentMembers.size() >= targetRide.getMaxCapacity()) {
+                targetRide.setStatus("Full");
+            }
+            cityRideRepository.save(targetRide);
 
             user.setActiveGroupId(targetRide.getId());
             userRepository.save(user);
+
+            notificationService.broadcastMemberJoined(
+                    targetRide.getId(),
+                    "CITY_RIDE",
+                    targetRide.getDestination(),
+                    user,
+                    currentMembers.size(),
+                    targetRide.getMaxCapacity()
+            );
 
             Map<String, Object> res = new LinkedHashMap<>();
             res.put("success", true);

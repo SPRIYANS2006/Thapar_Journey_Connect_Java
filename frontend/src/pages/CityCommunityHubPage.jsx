@@ -54,7 +54,16 @@ export default function CityCommunityHubPage({ community, user, posts = [], onBa
       Promise.resolve(onRefreshGroups?.()).catch(() => {});
       triggerToast?.({ id: 'community_trip_joined', type: 'success', title: 'Added to My Journeys', message: 'Your trip, group chat and travel details are ready there.' });
       onNavigateMyJourneys?.();
-    } catch (failure) { setError(failure.message || 'Could not join. Please try again.'); }
+    } catch (failure) {
+      const errMsg = failure.message || 'Could not join. Please try again.';
+      setError(errMsg);
+      triggerToast?.({
+        id: `join_err_${Date.now()}`,
+        type: 'warning',
+        title: 'Single-Ride Policy Active',
+        message: errMsg
+      });
+    }
     finally { setPending(null); }
   }
 

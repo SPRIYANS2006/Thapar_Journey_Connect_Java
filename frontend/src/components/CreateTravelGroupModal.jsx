@@ -27,7 +27,16 @@ export default function CreateTravelGroupModal({ isOpen, onClose, defaultType = 
       const result = await api.createTravelGroup({ type: defaultType, communityId: community.id, title: `${service.trim()} to ${destination.trim()}`.slice(0, 120), date, departureTime: time, boardingPoint: origin.trim(), destination: destination.trim(), trainNumber: isTrain ? service.trim() : '', travelClass: isTrain ? travelClass : '', busOperator: isTrain ? '' : service.trim(), description: description.trim() });
       triggerToast?.({ id: `travel_created_${result.group.id}`, type: 'success', title: 'Group created', message: 'Your group is ready in My Journeys.' });
       await onSuccess?.(result.group); onClose();
-    } catch (failure) { setError(failure.message || 'Could not create the group. Your details are saved here; please try again.'); }
+    } catch (failure) {
+      const errMsg = failure.message || 'Could not create the group. Your details are saved here; please try again.';
+      setError(errMsg);
+      triggerToast?.({
+        id: `create_err_${Date.now()}`,
+        type: 'warning',
+        title: 'Single-Ride Policy Active',
+        message: errMsg
+      });
+    }
     finally { setBusy(false); }
   }
 

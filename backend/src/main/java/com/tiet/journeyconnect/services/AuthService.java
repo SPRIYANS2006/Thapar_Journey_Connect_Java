@@ -63,6 +63,10 @@ public class AuthService {
                 }
             }
         }
+        String paramToken = request.getParameter("token");
+        if (paramToken != null && !paramToken.trim().isEmpty()) {
+            return paramToken.trim();
+        }
         return null;
     }
 

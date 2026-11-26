@@ -1,5 +1,4 @@
 // Central API service for Thapar Journey Connect
-import { io } from 'socket.io-client';
 
 const API_BASE = '/api';
 let sessionToken = null;
@@ -13,7 +12,165 @@ if (typeof window !== 'undefined') {
   }
 }
 
-let socketInstance = null;
+class RealtimeBus {
+  constructor() {
+    this.listeners = new Map();
+    this.eventSource = null;
+    this.pollTimer = null;
+    this.lastPolled = Date.now() - 5000;
+    this.seenIds = new Set();
+    this.connected = false;
+    this.currentToken = null;
+  }
+
+  on(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event).add(callback);
+    return this;
+  }
+
+  off(event, callback) {
+    if (this.listeners.has(event)) {
+      if (callback) {
+        this.listeners.get(event).delete(callback);
+      } else {
+        this.listeners.delete(event);
+      }
+    }
+    return this;
+  }
+
+  emit(event, ...args) {
+    this.dispatch(event, args[0]);
+    return this;
+  }
+
+  dispatch(event, data) {
+    const set = this.listeners.get(event);
+    if (set) {
+      for (const cb of set) {
+        try {
+          cb(data);
+        } catch (err) {
+          console.warn(`[RealtimeBus] Listener error for ${event}:`, err);
+        }
+      }
+    }
+  }
+
+  connect(token) {
+    this.currentToken = token || getToken();
+    this.disconnect();
+
+    // 1. Establish native Server-Sent Events (SSE) connection
+    try {
+      const sseUrl = this.currentToken
+        ? `/api/events/stream?token=${encodeURIComponent(this.currentToken)}`
+        : '/api/events/stream';
+
+      this.eventSource = new EventSource(sseUrl, { withCredentials: true });
+
+      this.eventSource.onopen = () => {
+        this.connected = true;
+        this.dispatch('connect', { connected: true });
+      };
+
+      this.eventSource.onerror = () => {
+        this.connected = false;
+      };
+
+      const knownEvents = [
+        'connect',
+        'new_chat_message',
+        'new_message',
+        'new_travel_group_message',
+        'member_joined',
+        'member_left',
+        'group_confirmed',
+        'group_updated',
+        'journeys_updated'
+      ];
+
+      for (const ev of knownEvents) {
+        this.eventSource.addEventListener(ev, (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (e.lastEventId && this.seenIds.has(e.lastEventId)) return;
+            if (e.lastEventId) {
+              this.seenIds.add(e.lastEventId);
+              if (this.seenIds.size > 2000) {
+                const arr = Array.from(this.seenIds);
+                this.seenIds = new Set(arr.slice(1000));
+              }
+            }
+            this.dispatch(ev, data);
+          } catch {
+            this.dispatch(ev, e.data);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[RealtimeBus] SSE setup failed, falling back to polling:', e);
+    }
+
+    // 2. High-reliability polling fallback (every 2.5s) to guarantee instant event arrival
+    this.startPolling();
+
+    return this;
+  }
+
+  startPolling() {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+
+    const poll = async () => {
+      const token = getToken();
+      if (!token) return;
+      try {
+        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+        const res = await fetch(`/api/events/poll?since=${this.lastPolled}`, {
+          credentials: 'include',
+          headers
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (body?.events && Array.isArray(body.events)) {
+          for (const ev of body.events) {
+            if (this.seenIds.has(ev.id)) continue;
+            this.seenIds.add(ev.id);
+            if (ev.timestamp > this.lastPolled) {
+              this.lastPolled = ev.timestamp;
+            }
+            this.dispatch(ev.name, ev.data);
+          }
+        }
+        if (body?.serverTime) {
+          this.lastPolled = Math.max(this.lastPolled, body.serverTime - 1000);
+        }
+      } catch {
+        // network glitch, safe to ignore
+      }
+    };
+
+    this.pollTimer = setInterval(poll, 2500);
+  }
+
+  disconnect() {
+    if (this.eventSource) {
+      try { this.eventSource.close(); } catch {}
+      this.eventSource = null;
+    }
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    this.connected = false;
+    this.dispatch('disconnect', {});
+  }
+}
+
+let busInstance = null;
 const unauthorizedListeners = new Set();
 
 export function onUnauthorized(callback) {
@@ -37,32 +194,35 @@ export function getToken() {
 
 export function setToken(token) {
   sessionToken = token || null;
+  if (busInstance) {
+    busInstance.connect(sessionToken);
+  }
 }
 
 export function clearToken() {
   sessionToken = null;
+  if (busInstance) {
+    busInstance.disconnect();
+  }
 }
 
 export function getSocket() {
   if (typeof window === 'undefined') return null;
   const token = getToken();
 
-  if (!socketInstance) {
-    socketInstance = io({
-      transports: ['websocket', 'polling'],
-      auth: { token }
-    });
-  } else if (token && socketInstance.auth?.token !== token) {
-    socketInstance.auth = { token };
-    socketInstance.disconnect().connect();
+  if (!busInstance) {
+    busInstance = new RealtimeBus();
+    busInstance.connect(token);
+  } else if (token && busInstance.currentToken !== token) {
+    busInstance.connect(token);
   }
-  return socketInstance;
+  return busInstance;
 }
 
 export function disconnectSocket() {
-  if (socketInstance) {
-    socketInstance.disconnect();
-    socketInstance = null;
+  if (busInstance) {
+    busInstance.disconnect();
+    busInstance = null;
   }
 }
 
