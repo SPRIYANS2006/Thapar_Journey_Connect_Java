@@ -2,6 +2,7 @@
 backend/target/
 *.class
 *.jar
+!backend/app.jar
 *.war
 *.zip
 .mvn/
